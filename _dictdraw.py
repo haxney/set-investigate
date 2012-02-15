@@ -233,12 +233,15 @@ def draw_dictionary(cr, d, *lookup_paths):
             cr.move_to(-100, y)
             cr.rel_line_to(40, 0)
             cr.stroke()
-            draw_arrowhead(cr, -60, y)
+            draw_arrowhead(cr, -60, y) # Pointer on the left
 
             draw_button(cr, -20, y, len(lookup_path) > 1)
 
+            # Must move xx to the right to clear the table
+            MOVERIGHT=780
+
             if len(lookup_path) > 1:
-                cr.move_to(650, y)
+                cr.move_to(MOVERIGHT, y)
                 cr.rel_line_to(40, 0)
                 cr.stroke()
 
@@ -257,10 +260,10 @@ def draw_dictionary(cr, d, *lookup_paths):
                 cr.arc(690, (y0 + y1) / 2, (y1 - y0) / 2, 3 * pi / 2, pi / 2)
                 cr.stroke()
 
-                draw_button(cr, 652, yd, i + 1 < len(lookup_path))
+                draw_button(cr, 652, yd, i + 1 < len(lookup_path)) # Draw the collision circle
 
                 with save(cr):
-                    cr.translate(690, yd)
+                    cr.translate(690, yd) # Arrow of pointers on the right
                     cr.rotate(pi)
                     draw_arrowhead(cr, 0, 0)
 
