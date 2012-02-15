@@ -31,6 +31,9 @@ class PyDictEntry(Structure):
         ('me_value', py_object),
         ]
 
+    def __unicode__(self):
+        return u'DictEntry({self.me_hash}, {self.me_key}, {self.me_value})'.format(self=self)
+
 class PyDictObject(Structure):
     """A dictionary object."""
     _fields_ = [
