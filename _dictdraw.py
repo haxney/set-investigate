@@ -71,7 +71,7 @@ def draw_textbox(cr, texts, rectcolor):
     cr.rel_move_to(width, 0)
     return height
 
-def draw_arrowhead(x, y):
+def draw_arrowhead(cr, x, y):
     with save(cr):
         cr.translate(x, y)
         cr.move_to(0, -10)
@@ -233,7 +233,7 @@ def draw_dictionary(cr, d, *lookup_paths):
             cr.move_to(-100, y)
             cr.rel_line_to(40, 0)
             cr.stroke()
-            draw_arrowhead(-60, y)
+            draw_arrowhead(cr, -60, y)
 
             draw_button(cr, -20, y, len(lookup_path) > 1)
 
@@ -262,14 +262,15 @@ def draw_dictionary(cr, d, *lookup_paths):
                 with save(cr):
                     cr.translate(690, yd)
                     cr.rotate(pi)
-                    draw_arrowhead(0, 0)
+                    draw_arrowhead(cr, 0, 0)
 
 class DictPic(gtk.DrawingArea):
     # Draw in response to an expose-event
     __gsignals__ = { "expose-event": "override" }
 
-    def __init__(self, target):
+    def __init__(self, target, lookup_paths=[]):
         self.target = target
+        self.lookup_paths = lookup_paths
         super(self.__class__, self).__init__()
 
     # Handle the expose-event by drawing
@@ -287,15 +288,15 @@ class DictPic(gtk.DrawingArea):
 
     # Draw the dictionary
     def draw(self, cr, width, height):
-        draw_dictionary(cr, self.target)
+        draw_dictionary(cr, self.target, self.lookup_paths)
 
 WIDTH, HEIGHT = 960, 406
 
 #  GTK mumbo-jumbo to show the widget in a window and quit when it's closed
-def run(Widget, arg={0:"zero", 8:"eight"}):
+def run(w=DictPic, arg={0:"zero", 8:"eight"}, lookups=[]):
     window = gtk.Window()
     window.connect("delete-event", gtk.main_quit)
-    widget = Widget(arg)
+    widget = w(arg, lookups)
     widget.show()
     window.add(widget)
     window.set_default_size(WIDTH, HEIGHT)
