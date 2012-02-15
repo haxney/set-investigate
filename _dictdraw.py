@@ -6,8 +6,6 @@ import cairo, sys, gtk
 import _dictinfo
 from IPython.Debugger import Tracer; debug_here = Tracer()
 
-cr = None
-
 from contextlib import contextmanager
 
 def bits(n):
@@ -29,6 +27,8 @@ def save(cr):
     cr.restore()
     cr.move_to(*p)
 
+VALWIDTH = 9
+
 pat = cairo.LinearGradient(0.0, 0.0, 0.0, 1.0)
 pat.add_color_stop_rgba(1, 0.7, 0, 0, 1) # First stop, 100% opacity
 pat.add_color_stop_rgba(0, 0.9, 0.7, 0.2, 1) # Last stop, 100% opacity
@@ -47,7 +47,7 @@ def draw_textbox(cr, texts, rectcolor):
         x, y = cr.get_current_point()
         cr.translate(x, y)
 
-        extents = cr.text_extents('M' * len(''.join(texts)))
+        extents = cr.text_extents(u'M' * len(''.join(texts)))
         ty = ceil(extents[1])
         twidth = ceil(extents[2])
         theight = ceil(extents[3])
@@ -154,7 +154,7 @@ def draw_dictionary(cr, d, *lookup_paths):
         yoffset = font_size # room for header at top
 
         cr.set_font_size(font_size)
-        charwidth = cr.text_extents('M')[2]
+        charwidth = cr.text_extents(u'M')[2]
         width = 100 #actually compute from font size later
 
         cr.translate(xoffset, yoffset)  # upper-left corner of the dictionary
@@ -163,7 +163,7 @@ def draw_dictionary(cr, d, *lookup_paths):
             cr.set_source_rgb(0,0,0)
             cr.translate(2,-6)
             if len(o) == 8:
-                cr.show_text('Idx      Hash     Key   Value')
+                cr.show_text(u'Idx      Hash     Key     Value')
 
         height = 0
 
@@ -183,44 +183,44 @@ def draw_dictionary(cr, d, *lookup_paths):
                     k = entry.me_key
                 except ValueError:
                     # This is a completely empty entry.
-                    draw_textbox(cr, [white, ' '], lightgray)
+                    draw_textbox(cr, [white, u' '], lightgray)
                     cr.rel_move_to(gap, 0)
-                    draw_textbox(cr, [white, ' ' * hashwidth], lightgray)
+                    draw_textbox(cr, [white, u' ' * hashwidth], lightgray)
                     cr.rel_move_to(gap, 0)
-                    draw_textbox(cr, [white, ' ' * 7], lightgray)
+                    draw_textbox(cr, [white, u' ' * VALWIDTH], lightgray)
                     if show_value:
                         cr.rel_move_to(gap, 0)
-                        draw_textbox(cr, [white, ' ' * 6], lightgray)
+                        draw_textbox(cr, [white, u' ' * VALWIDTH], lightgray)
                     continue
 
                 if k is _dictinfo.dummy:
-                    draw_textbox(cr, [white, '!'], red)
+                    draw_textbox(cr, [white, u'!'], red)
                     cr.rel_move_to(gap, 0)
-                    draw_textbox(cr, [white, ' ' * hashwidth], gray)
+                    draw_textbox(cr, [white, u' ' * hashwidth], gray)
                     cr.rel_move_to(gap, 0)
-                    draw_textbox(cr, [white, '<dummy>'], gray)
+                    draw_textbox(cr, [white, u'<dummy>'], gray)
                     if show_value:
                         cr.rel_move_to(gap, 0)
-                        draw_textbox(cr, [white, ' ' * 6], gray)
+                        draw_textbox(cr, [white, u' ' * VALWIDTH], gray)
                     continue
-                debug_here()
+
                 h = entry.me_hash
                 v = entry.me_value
 
                 if h & o.ma_mask == i:
-                    draw_textbox(cr, [white, '='], green)
+                    draw_textbox(cr, [white, u'='], green)
                 else:
-                    draw_textbox(cr, [white, '/'], red)
+                    draw_textbox(cr, [white, u'/'], red)
                 cr.rel_move_to(gap, 0)
                 bstr = bits(h)[-hashwidth+1:]
-                texts = [lightgray, '…' + bstr[:-sigbits],
+                texts = [lightgray, u'…' + bstr[:-sigbits],
                          gold, bstr[-sigbits:]]
                 draw_textbox(cr, texts, gray)
                 cr.rel_move_to(gap, 0)
-                draw_textbox(cr, [white, '%-7s' % myrepr(k)], gray)
+                draw_textbox(cr, [white, u'%-9s' % myrepr(k)], gray)
                 if show_value:
                     cr.rel_move_to(gap, 0)
-                    draw_textbox(cr, [white, '%-6s' % myrepr(v)], gray)
+                    draw_textbox(cr, [white, u'%-9s' % myrepr(v)], gray)
 
     for lookup_path in lookup_paths:
         with save(cr):
@@ -270,35 +270,34 @@ class DictPic(gtk.DrawingArea):
 
     def __init__(self, target):
         self.target = target
-        super(DictPic, self).__init__()
+        super(self.__class__, self).__init__()
 
     # Handle the expose-event by drawing
     def do_expose_event(self, event):
 
         # Create the cairo context
-        #self.cr = draw_dictionary(self.window.cairo_create())
         self.cr = self.window.cairo_create()
 
         # Restrict Cairo to the exposed area; avoid extra work
-        # self.cr.rectangle(event.area.x, event.area.y,
-        #         event.area.width, event.area.height)
-        # self.cr.clip()
+        self.cr.rectangle(event.area.x, event.area.y,
+                event.area.width, event.area.height)
+        self.cr.clip()
 
         self.draw(self.cr, *self.window.get_size())
 
+    # Draw the dictionary
     def draw(self, cr, width, height):
-        # Fill the background with gray
-        # cr.set_source_rgb(0.5, 0.5, 0)
-        # cr.rectangle(0, 0, width, height)
-        # cr.fill()
         draw_dictionary(cr, self.target)
 
+WIDTH, HEIGHT = 960, 406
+
 #  GTK mumbo-jumbo to show the widget in a window and quit when it's closed
-def run(Widget, arg):
+def run(Widget, arg={0:"zero", 8:"eight"}):
     window = gtk.Window()
     window.connect("delete-event", gtk.main_quit)
     widget = Widget(arg)
     widget.show()
     window.add(widget)
+    window.set_default_size(WIDTH, HEIGHT)
     window.present()
     gtk.main()
