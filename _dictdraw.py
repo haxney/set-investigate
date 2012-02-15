@@ -4,6 +4,7 @@
 from math import ceil, pi
 import cairo, sys, gtk
 import _dictinfo
+from IPython.Debugger import Tracer; debug_here = Tracer()
 
 cr = None
 
@@ -38,9 +39,7 @@ def center_text(cr, x, y, text):
     cr.show_text(text)
     cr.fill()
 
-def draw_textbox(texts, rectcolor):
-    global cr
-
+def draw_textbox(cr, texts, rectcolor):
     with save(cr):
         colors = [ a for i, a in enumerate(texts) if i%2 == 0 ]
         texts = [ a for i, a in enumerate(texts) if i%2 == 1 ]
@@ -106,15 +105,11 @@ def draw_button(cr, x, y, is_collision=True):
             cr.set_source_rgb(*white)
             center_text(cr, 0.8, -1, '×')
 
-draw_target = None
 cr = None
 
-def draw_dictionary(*lookup_paths):
+def draw_dictionary(cr, d, *lookup_paths):
     """Supply `d` a Python dictionary."""
-    global draw_target
-    global cr
-
-    o = _dictinfo.dictobject(draw_target)
+    o = _dictinfo.dictobject(d)
 
     WIDTH=960
     if len(o) == 8:
@@ -181,51 +176,51 @@ def draw_dictionary(*lookup_paths):
             with save(cr):
                 entry = o.ma_table[i]
 
-                height = draw_textbox([gold, bits(i)[-sigbits:]], gray)
+                height = draw_textbox(cr, [gold, bits(i)[-sigbits:]], gray)
                 cr.rel_move_to(gap, 0)
 
                 try:
                     k = entry.me_key
                 except ValueError:
                     # This is a completely empty entry.
-                    draw_textbox([white, ' '], lightgray)
+                    draw_textbox(cr, [white, ' '], lightgray)
                     cr.rel_move_to(gap, 0)
-                    draw_textbox([white, ' ' * hashwidth], lightgray)
+                    draw_textbox(cr, [white, ' ' * hashwidth], lightgray)
                     cr.rel_move_to(gap, 0)
-                    draw_textbox([white, ' ' * 7], lightgray)
+                    draw_textbox(cr, [white, ' ' * 7], lightgray)
                     if show_value:
                         cr.rel_move_to(gap, 0)
-                        draw_textbox([white, ' ' * 6], lightgray)
+                        draw_textbox(cr, [white, ' ' * 6], lightgray)
                     continue
 
                 if k is _dictinfo.dummy:
-                    draw_textbox([white, '!'], red)
+                    draw_textbox(cr, [white, '!'], red)
                     cr.rel_move_to(gap, 0)
-                    draw_textbox([white, ' ' * hashwidth], gray)
+                    draw_textbox(cr, [white, ' ' * hashwidth], gray)
                     cr.rel_move_to(gap, 0)
-                    draw_textbox([white, '<dummy>'], gray)
+                    draw_textbox(cr, [white, '<dummy>'], gray)
                     if show_value:
                         cr.rel_move_to(gap, 0)
-                        draw_textbox([white, ' ' * 6], gray)
+                        draw_textbox(cr, [white, ' ' * 6], gray)
                     continue
-
+                debug_here()
                 h = entry.me_hash
                 v = entry.me_value
 
                 if h & o.ma_mask == i:
-                    draw_textbox([white, '='], green)
+                    draw_textbox(cr, [white, '='], green)
                 else:
-                    draw_textbox([white, '/'], red)
+                    draw_textbox(cr, [white, '/'], red)
                 cr.rel_move_to(gap, 0)
                 bstr = bits(h)[-hashwidth+1:]
                 texts = [lightgray, '…' + bstr[:-sigbits],
                          gold, bstr[-sigbits:]]
-                draw_textbox(texts, gray)
+                draw_textbox(cr, texts, gray)
                 cr.rel_move_to(gap, 0)
-                draw_textbox([white, '%-7s' % myrepr(k)], gray)
+                draw_textbox(cr, [white, '%-7s' % myrepr(k)], gray)
                 if show_value:
                     cr.rel_move_to(gap, 0)
-                    draw_textbox([white, '%-6s' % myrepr(v)], gray)
+                    draw_textbox(cr, [white, '%-6s' % myrepr(v)], gray)
 
     for lookup_path in lookup_paths:
         with save(cr):
@@ -268,12 +263,14 @@ def draw_dictionary(*lookup_paths):
                     cr.translate(690, yd)
                     cr.rotate(pi)
                     draw_arrowhead(0, 0)
-    return cr
-
 
 class DictPic(gtk.DrawingArea):
     # Draw in response to an expose-event
     __gsignals__ = { "expose-event": "override" }
+
+    def __init__(self, target):
+        self.target = target
+        super(DictPic, self).__init__()
 
     # Handle the expose-event by drawing
     def do_expose_event(self, event):
@@ -283,30 +280,24 @@ class DictPic(gtk.DrawingArea):
         self.cr = self.window.cairo_create()
 
         # Restrict Cairo to the exposed area; avoid extra work
-        self.cr.rectangle(event.area.x, event.area.y,
-                event.area.width, event.area.height)
-        self.cr.clip()
+        # self.cr.rectangle(event.area.x, event.area.y,
+        #         event.area.width, event.area.height)
+        # self.cr.clip()
 
         self.draw(self.cr, *self.window.get_size())
 
-
-
-    def draw(self, incr, width, height):
+    def draw(self, cr, width, height):
         # Fill the background with gray
         # cr.set_source_rgb(0.5, 0.5, 0)
         # cr.rectangle(0, 0, width, height)
         # cr.fill()
-        global cr
-        cr = incr
-
-        draw_dictionary()
-        return False
+        draw_dictionary(cr, self.target)
 
 #  GTK mumbo-jumbo to show the widget in a window and quit when it's closed
-def run(Widget):
+def run(Widget, arg):
     window = gtk.Window()
     window.connect("delete-event", gtk.main_quit)
-    widget = Widget()
+    widget = Widget(arg)
     widget.show()
     window.add(widget)
     window.present()
