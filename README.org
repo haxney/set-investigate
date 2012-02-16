@@ -1,0 +1,12 @@
+* Python Set Investigations
+  These are some tools to help experiment with the behavior of Python's =set=
+  type. It's behavior in the face of hash collisions is... weird. Consider the
+  following:
+
+#+begin_src python
+[{i, i + 8} for i in range(6)] #=> [{8, 0}, {9, 1}, {10, 2}, {3, 11}, {4, 12}, {13, 5}]
+#+end_src
+
+  That's wacky.
+* +Inspired+ stolen from:
+  - [[https://bitbucket.org/brandon/pycon2010-mighty-dictionary][This Pycon talk]] contains all of the fancy dict-manipulation code
